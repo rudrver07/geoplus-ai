@@ -24,7 +24,8 @@ import {
   Layers, 
   AlertTriangle,
   ExternalLink,
-  Radio
+  Radio,
+  RefreshCw
 } from "lucide-react";
 import VectorMap from "@/components/map/VectorMap";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,11 @@ export default function Dashboard() {
   const [, setDisasters] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Refresh state for Critical Incident Feed
+  const [isRefreshingAlerts, setIsRefreshingAlerts] = useState(false);
+  const [lastAlertsRefresh, setLastAlertsRefresh] = useState<string | null>(null);
+  const [alertsRefreshError, setAlertsRefreshError] = useState<string | null>(null);
 
   // Live News State
   const [searchQueryNews, setSearchQueryNews] = useState("oil shipping geopolitics chokepoint");
@@ -77,11 +83,43 @@ export default function Dashboard() {
       setAlerts(alertsData);
       setWeatherAlerts(weatherData.weather || []);
       setDisasters(weatherData.disasters || []);
+      setLastAlertsRefresh(new Date().toLocaleTimeString());
     } catch (err: any) {
       console.error("API Error:", err);
       setError(err.message || "Failed to establish a secure link with operations center.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const refreshAlertsFeed = async () => {
+    setIsRefreshingAlerts(true);
+    setAlertsRefreshError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/crisis-intelligence/refresh`, {
+        method: "POST"
+      });
+      if (!res.ok) {
+        throw new Error(`HTTP error ${res.status}`);
+      }
+      const data = await res.json();
+      
+      // Deduplicate alerts on frontend as well to be completely safe
+      const seen = new Set();
+      const uniqueAlerts = data.filter((a: any) => {
+        const headline = a.headline;
+        if (seen.has(headline)) return false;
+        seen.add(headline);
+        return true;
+      });
+      
+      setAlerts(uniqueAlerts);
+      setLastAlertsRefresh(new Date().toLocaleTimeString());
+    } catch (err: any) {
+      console.error("Alerts Refresh Error:", err);
+      setAlertsRefreshError(err.message || "Failed to update Critical Incident Feed.");
+    } finally {
+      setIsRefreshingAlerts(false);
     }
   };
 
@@ -374,10 +412,40 @@ export default function Dashboard() {
           <div className="space-y-6">
             {/* Live Alerts feed */}
             <div className="bg-slate-950/40 border border-slate-900 rounded-lg p-4 space-y-4">
-              <h3 className="text-xs font-mono uppercase text-slate-400 font-bold tracking-wider border-b border-slate-900 pb-2 flex justify-between items-center">
-                <span>Critical Incident Feed</span>
-                <span className="h-1.5 w-1.5 rounded-full bg-danger animate-ping"></span>
-              </h3>
+              <div className="flex justify-between items-center border-b border-slate-900 pb-2 mb-2">
+                <h3 className="text-xs font-mono uppercase text-slate-400 font-bold tracking-wider flex items-center gap-2">
+                  <span>Critical Incident Feed</span>
+                  <span className="h-1.5 w-1.5 rounded-full bg-danger animate-ping"></span>
+                </h3>
+                <div className="flex items-center gap-2">
+                  {lastAlertsRefresh && (
+                    <span className="text-[9px] font-mono text-slate-500 hidden sm:inline">
+                      Refreshed: {lastAlertsRefresh}
+                    </span>
+                  )}
+                  <button
+                    onClick={refreshAlertsFeed}
+                    disabled={isRefreshingAlerts}
+                    className="p-1 px-2 text-[9px] font-mono bg-slate-900 border border-slate-800 hover:border-accent hover:text-accent rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <RefreshCw className={cn("h-2.5 w-2.5", isRefreshingAlerts && "animate-spin")} />
+                    {isRefreshingAlerts ? "REFRESHING..." : "REFRESH"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Closeable error notification */}
+              {alertsRefreshError && (
+                <div className="p-2 bg-danger/10 border border-danger/30 text-danger text-[9px] rounded font-mono flex justify-between items-center animate-pulse">
+                  <span>{alertsRefreshError}</span>
+                  <button 
+                    onClick={() => setAlertsRefreshError(null)} 
+                    className="hover:text-white font-bold ml-2 px-1 cursor-pointer"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
               
               <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
                 {alertsData.map((alert) => (

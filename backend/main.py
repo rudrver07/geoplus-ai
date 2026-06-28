@@ -160,6 +160,15 @@ async def fetch_and_store_news(db: Session):
             "source": chosen[2]
         })
 
+    # Deduplicate news_items by headline
+    seen_headlines = set()
+    unique_news = []
+    for item in news_items:
+        if item["headline"] not in seen_headlines:
+            seen_headlines.add(item["headline"])
+            unique_news.append(item)
+    news_items = unique_news
+
     # Evaluate new news items using Gemini
     for item in news_items:
         # Check if already processed
@@ -510,6 +519,16 @@ def get_crisis_intelligence():
             }
         ]
     return latest_crisis_intelligence
+
+@app.post("/api/crisis-intelligence/refresh")
+async def refresh_crisis_intelligence(db: Session = Depends(get_db)):
+    try:
+        await fetch_and_store_news(db)
+        update_global_cache(db)
+        return latest_crisis_intelligence
+    except Exception as e:
+        logger.error(f"Manual alerts refresh failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to refresh feeds: {str(e)}")
 
 @app.get("/api/weather-alerts")
 def get_weather_alerts():
