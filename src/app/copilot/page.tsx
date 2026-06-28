@@ -1,16 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { 
   Terminal, 
   Send, 
   BookOpen, 
   ShieldCheck, 
   Activity, 
-  Compass, 
-  Zap, 
-  Clock,
   ArrowRight,
   Info
 } from "lucide-react";
@@ -41,6 +37,7 @@ export default function Copilot() {
   const [currentConfidence, setCurrentConfidence] = useState(98);
   
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const messageIdCounter = useRef(0);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -57,9 +54,10 @@ export default function Copilot() {
   const handleSend = (text: string) => {
     if (!text.trim()) return;
 
+    messageIdCounter.current += 1;
     // Add user message
     const userMsg: Message = {
-      id: `msg-user-${Date.now()}`,
+      id: `msg-user-${messageIdCounter.current}`,
       sender: "user",
       text
     };
@@ -111,8 +109,9 @@ export default function Copilot() {
         citations = ["Default GeoPulse Intelligence Registry"];
       }
 
+      messageIdCounter.current += 1;
       const copilotMsg: Message = {
-        id: `msg-copilot-${Date.now()}`,
+        id: `msg-copilot-${messageIdCounter.current}`,
         sender: "copilot",
         text: responseText,
         confidence,

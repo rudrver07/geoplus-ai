@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { API_BASE_URL } from "@/config/api";
 import { 
   ArrowRight, 
   ShieldAlert, 
@@ -18,21 +19,52 @@ import {
   CheckCircle2,
   Lock
 } from "lucide-react";
-import { alertsData } from "@/data/mockData";
 import { cn } from "@/lib/utils";
 
+const DEFAULT_ALERTS = [
+  {
+    id: "alert-default-1",
+    timestamp: "Live",
+    headline: "System monitoring online. Ingesting global chokepoints feeds...",
+    region: "Global",
+    severity: "low"
+  }
+];
+
 export default function Home() {
+  const [alerts, setAlerts] = useState<any[]>(DEFAULT_ALERTS);
   const [currentAlertIdx, setCurrentAlertIdx] = useState(0);
+
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/crisis-intelligence`);
+        if (!res.ok) {
+          throw new Error(`HTTP error ${res.status}`);
+        }
+        const data = await res.json();
+        if (data && data.length > 0) {
+          setAlerts(data);
+        }
+      } catch (err) {
+        console.error("API Error:", err);
+      }
+    };
+    fetchAlerts();
+    const refreshInterval = setInterval(fetchAlerts, 300000); // 5 min refresh
+    return () => clearInterval(refreshInterval);
+  }, []);
 
   // Cycle floating alerts in the hero
   useEffect(() => {
+    if (alerts.length <= 1) return;
     const interval = setInterval(() => {
-      setCurrentAlertIdx((prev) => (prev + 1) % alertsData.length);
+      setCurrentAlertIdx((prev) => (prev + 1) % alerts.length);
     }, 4000);
     return () => clearInterval(interval);
-  }, []);
+  }, [alerts]);
 
-  const activeAlert = alertsData[currentAlertIdx];
+  const activeAlert = alerts[currentAlertIdx] || DEFAULT_ALERTS[0];
 
   const stats = [
     { label: "Countries Monitored", value: "128", icon: Globe },

@@ -2,60 +2,50 @@ import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const query = searchParams.get("q") || "oil shipping geopolitics chokepoint";
+  let query = searchParams.get("q") || "";
+  
+  if (!query || query === "oil shipping geopolitics chokepoint") {
+    query = '(oil AND (imports OR exports)) OR "trade restrictions" OR sanctions OR tariffs OR "shipping disruptions" OR "geopolitical conflicts" OR "supply-chain risks"';
+  }
+
+  const newsApiKey = process.env.NEWS_API_KEY;
+  if (!newsApiKey) {
+    return NextResponse.json({ error: "NEWS_API_KEY is not configured in the environment" }, { status: 500 });
+  }
 
   try {
-    // Fetch RSS from Google News
-    const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
-    const response = await fetch(rssUrl, {
+    const newsUrl = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&pageSize=20&sortBy=publishedAt&language=en&apiKey=${newsApiKey}`;
+    
+    const response = await fetch(newsUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+      },
       next: { revalidate: 300 } // Cache for 5 minutes
     });
 
     if (!response.ok) {
-      throw new Error("Failed to fetch RSS feed from Google News");
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.message || `Failed to fetch news from News API (Status: ${response.status})`);
     }
 
-    const xmlText = await response.text();
+    const data = await response.json();
+    const articles = data.articles || [];
 
-    // Custom lightweight XML parser for RSS item structure
-    // <item>
-    //   <title>...</title>
-    //   <link>...</link>
-    //   <pubDate>...</pubDate>
-    //   <source url="...">...</source>
-    // </item>
-    const items: any[] = [];
-    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-    let match;
-
-    while ((match = itemRegex.exec(xmlText)) !== null) {
-      const itemContent = match[1];
-
-      const getTagContent = (tag: string) => {
-        const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\/${tag}>`);
-        const m = regex.exec(itemContent);
-        return m ? m[1].replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1").trim() : "";
-      };
-
-      const title = getTagContent("title");
-      const link = getTagContent("link");
-      const pubDate = getTagContent("pubDate");
-      const source = getTagContent("source");
-
-      // Build item
-      if (title && link) {
-        items.push({
+    const items = articles
+      .map((art: any) => {
+        const pubDate = art.publishedAt || new Date().toISOString();
+        return {
           id: `news-${Math.random().toString(36).substr(2, 9)}`,
-          title: decodeHtmlEntities(title),
-          link,
+          title: decodeHtmlEntities(art.title || ""),
+          link: art.url || "",
           pubDate,
-          source: decodeHtmlEntities(source) || "Google News",
+          source: decodeHtmlEntities(art.source?.name || "News API"),
           timestamp: formatRelativeTime(pubDate)
-        });
-      }
-    }
+        };
+      })
+      .filter((item: any) => item.title && item.link);
 
-    return NextResponse.json(items.slice(0, 20)); // Limit to 20 articles
+    return NextResponse.json(items);
 
   } catch (error: any) {
     console.error("News API Error:", error);
@@ -87,7 +77,7 @@ function formatRelativeTime(dateStr: string): string {
     if (diffMin < 60) return `${diffMin}m ago`;
     if (diffHr < 24) return `${diffHr}h ago`;
     return `${diffDay}d ago`;
-  } catch (e) {
+  } catch {
     return "Recent";
   }
 }

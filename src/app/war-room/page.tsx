@@ -1,25 +1,21 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { API_BASE_URL } from "@/config/api";
 import { 
-  ShieldAlert, 
   Radio, 
   Bell, 
-  Play, 
   Volume2, 
   VolumeX, 
   CheckSquare, 
   AlertTriangle,
-  ArrowRight,
-  TrendingUp,
   RotateCcw,
   Layers,
-  Skull
+  Skull,
+  Activity
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import VectorMap from "@/components/map/VectorMap";
-import { scenarioSteps } from "@/data/mockData";
 
 export default function WarRoom() {
   const [isCrisisActive, setIsCrisisActive] = useState(false);
@@ -28,6 +24,11 @@ export default function WarRoom() {
   const [oilPrice, setOilPrice] = useState(86.20);
   const [riskIndex, setRiskIndex] = useState(74.8);
   const [activeNews, setActiveNews] = useState("PEACE STATE SECURED. CORRIDORS MONITORED BY SATELLITE OVERWATCH.");
+  
+  const [steps, setSteps] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [checklist, setChecklist] = useState([
     { id: "chk-1", text: "Initiate Naval escorts for flagship crude carriers", done: false },
     { id: "chk-2", text: "Tap strategic petroleum reserves (SPR) for 10M barrels", done: false },
@@ -35,6 +36,30 @@ export default function WarRoom() {
     { id: "chk-4", text: "Enact voluntary retail conservation protocols", done: false },
     { id: "chk-5", text: "Activate bilateral spot market swaps with Brazil", done: false }
   ]);
+
+  const fetchWarRoomData = async () => {
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/war-room`);
+      if (!res.ok) {
+        throw new Error(`HTTP error ${res.status}`);
+      }
+      const data = await res.json();
+      setSteps(data || []);
+    } catch (err: any) {
+      console.error("API Error:", err);
+      setError(err.message || "Failed to establish a secure link with War Room command data.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchWarRoomData();
+    const interval = setInterval(fetchWarRoomData, 300000); // 5 min refresh
+    return () => clearInterval(interval);
+  }, []);
 
   // Audio synthesizer using Web Audio API for a futuristic sonar ping/siren
   const playSirenSound = (frequency = 440, type: OscillatorType = "sine", duration = 0.3) => {
@@ -66,13 +91,13 @@ export default function WarRoom() {
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
-    if (isCrisisActive) {
+    if (isCrisisActive && steps.length > 0) {
       // Periodic step increment
       interval = setInterval(() => {
         setCurrentStepIdx((prevIdx) => {
           const nextIdx = prevIdx + 1;
-          if (nextIdx < scenarioSteps.length) {
-            const step = scenarioSteps[nextIdx];
+          if (nextIdx < steps.length) {
+            const step = steps[nextIdx];
             
             // Trigger alerts & update state
             setActiveNews(`[BREAKING NEWS] ${step.headline} - ${step.details}`);
@@ -92,12 +117,14 @@ export default function WarRoom() {
     }
 
     return () => clearInterval(interval);
-  }, [isCrisisActive, soundEnabled]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCrisisActive, soundEnabled, steps]);
 
   const handleStartCrisis = () => {
+    if (steps.length === 0) return;
     setIsCrisisActive(true);
     setCurrentStepIdx(0);
-    const step = scenarioSteps[0];
+    const step = steps[0];
     
     // Set initial step parameters
     setActiveNews(`[BREAKING NEWS] ${step.headline} - ${step.details}`);
@@ -130,6 +157,34 @@ export default function WarRoom() {
       })
     );
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[500px] border border-slate-900 bg-slate-950/40 rounded-lg font-mono text-xs">
+        <Activity className="h-8 w-8 text-accent animate-pulse mb-4" />
+        <span className="text-slate-400 font-bold tracking-wider">GEOPULSE TACTICAL OVERLINK SYNCHRONIZING...</span>
+        <span className="text-[10px] text-slate-600 mt-1">Establishing link secure channels with command war room node</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[500px] border border-danger/30 bg-danger/5 rounded-lg font-mono text-xs p-6 space-y-4">
+        <AlertTriangle className="h-10 w-10 text-danger animate-bounce" />
+        <div className="text-center">
+          <div className="text-danger font-bold text-sm uppercase">OVERLINK LINK FAILURE</div>
+          <div className="text-slate-400 mt-2 max-w-md">{error}</div>
+        </div>
+        <button 
+          onClick={fetchWarRoomData}
+          className="px-4 py-2 bg-danger/25 text-danger border border-danger/40 hover:bg-danger/40 rounded uppercase font-bold tracking-widest cursor-pointer transition-all"
+        >
+          Re-establish Connection
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className={cn(
@@ -269,18 +324,18 @@ export default function WarRoom() {
           </div>
 
           {/* Chronological scenario step visualizer */}
-          {isCrisisActive && (
+          {isCrisisActive && steps.length > 0 && (
             <div className="p-5 bg-slate-900/30 border border-slate-900 rounded-lg space-y-3 font-mono text-[10px]">
               <div className="flex justify-between items-center border-b border-slate-800 pb-1.5">
                 <span className="text-danger font-bold uppercase tracking-wider flex items-center gap-1">
                   <span className="h-1.5 w-1.5 bg-danger rounded-full animate-ping"></span> SCENARIO PLAYBACK
                 </span>
-                <span className="text-slate-500">STAGE {currentStepIdx + 1} OF 5</span>
+                <span className="text-slate-500">STAGE {currentStepIdx + 1} OF {steps.length}</span>
               </div>
               <div className="space-y-1.5">
-                <div className="text-white font-bold">{scenarioSteps[currentStepIdx].headline}</div>
+                <div className="text-white font-bold">{steps[currentStepIdx]?.headline}</div>
                 <p className="text-slate-400 leading-normal text-[9px] italic">
-                  {scenarioSteps[currentStepIdx].details}
+                  {steps[currentStepIdx]?.details}
                 </p>
               </div>
             </div>

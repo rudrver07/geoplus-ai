@@ -1,42 +1,64 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useEffect } from "react";
+import { API_BASE_URL } from "@/config/api";
 import { 
   Network, 
   Search, 
   Settings2, 
   Activity, 
-  TrendingUp, 
   Play, 
   Pause, 
   ZoomIn, 
   ZoomOut,
-  Info,
-  CheckCircle,
   AlertTriangle,
   Flame
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { networkNodes, networkEdges } from "@/data/mockData";
 
 export default function DigitalTwin() {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedNodeType, setSelectedNodeType] = useState("all");
-  const [selectedNode, setSelectedNode] = useState<any>(networkNodes[0]);
+  
+  const [nodes, setNodes] = useState<any[]>([]);
+  const [edges, setEdges] = useState<any[]>([]);
+  const [selectedNode, setSelectedNode] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [isPropagating, setIsPropagating] = useState(false);
   const [propagationStep, setPropagationStep] = useState(0);
 
-  // Filter nodes based on search and type dropdown
-  const filteredNodes = useMemo(() => {
-    return networkNodes.filter((node) => {
-      const matchesSearch = node.label.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesType = selectedNodeType === "all" || node.type === selectedNodeType;
-      return matchesSearch && matchesType;
-    });
-  }, [searchQuery, selectedNodeType]);
+  const fetchTwinData = async () => {
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/digital-twin`);
+      if (!res.ok) {
+        throw new Error(`HTTP error ${res.status}`);
+      }
+      const data = await res.json();
+      setNodes(data.nodes || []);
+      setEdges(data.edges || []);
+      if (data.nodes && data.nodes.length > 0 && !selectedNode) {
+        setSelectedNode(data.nodes[0]);
+      }
+    } catch (err: any) {
+      console.error("API Error:", err);
+      setError(err.message || "Failed to establish link with digital twin telemetry center.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchTwinData();
+    const interval = setInterval(fetchTwinData, 300000); // 5 min refresh
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Handle zoom modifiers
   const handleZoom = (factor: number) => {
@@ -72,6 +94,7 @@ export default function DigitalTwin() {
 
   // Helper to determine active node status under propagation state
   const getNodeStatus = (node: any) => {
+    if (!node) return "healthy";
     if (!isPropagating || propagationStep === 0) return node.status;
     
     // Disruption triggers at Bab-el-Mandeb (node-cor-2)
@@ -85,6 +108,34 @@ export default function DigitalTwin() {
 
     return node.status;
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[500px] border border-slate-900 bg-slate-950/40 rounded-lg font-mono text-xs">
+        <Activity className="h-8 w-8 text-accent animate-pulse mb-4" />
+        <span className="text-slate-400 font-bold tracking-wider">GEOPULSE TACTICAL OVERLINK SYNCHRONIZING...</span>
+        <span className="text-[10px] text-slate-600 mt-1">Establishing link secure channels with command twin node</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[500px] border border-danger/30 bg-danger/5 rounded-lg font-mono text-xs p-6 space-y-4">
+        <AlertTriangle className="h-10 w-10 text-danger animate-bounce" />
+        <div className="text-center">
+          <div className="text-danger font-bold text-sm uppercase">OVERLINK LINK FAILURE</div>
+          <div className="text-slate-400 mt-2 max-w-md">{error}</div>
+        </div>
+        <button 
+          onClick={fetchTwinData}
+          className="px-4 py-2 bg-danger/25 text-danger border border-danger/40 hover:bg-danger/40 rounded uppercase font-bold tracking-widest cursor-pointer transition-all"
+        >
+          Re-establish Connection
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 relative z-10 font-sans">
@@ -206,9 +257,9 @@ export default function DigitalTwin() {
               <rect width="100%" height="100%" fill="none" />
 
               {/* Draw Edges */}
-              {networkEdges.map((edge) => {
-                const sourceNode = networkNodes.find(n => n.id === edge.source);
-                const targetNode = networkNodes.find(n => n.id === edge.target);
+              {edges.map((edge) => {
+                const sourceNode = nodes.find(n => n.id === edge.source);
+                const targetNode = nodes.find(n => n.id === edge.target);
                 
                 if (!sourceNode || !targetNode) return null;
 
@@ -256,7 +307,7 @@ export default function DigitalTwin() {
               })}
 
               {/* Draw Nodes */}
-              {networkNodes.map((node) => {
+              {nodes.map((node) => {
                 const status = getNodeStatus(node);
                 const isSelected = selectedNode?.id === node.id;
                 const isSearchMatch = searchQuery && node.label.toLowerCase().includes(searchQuery.toLowerCase());

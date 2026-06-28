@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { API_BASE_URL } from "@/config/api";
 import { 
   ResponsiveContainer, 
   BarChart, 
@@ -13,15 +14,12 @@ import {
 } from "recharts";
 import { 
   Truck, 
-  SlidersHorizontal, 
   Filter, 
   Compass, 
   AlertTriangle, 
-  TrendingUp,
   Award,
-  DollarSign
+  Activity
 } from "lucide-react";
-import { suppliersData, routesData } from "@/data/mockData";
 import { cn } from "@/lib/utils";
 
 export default function Procurement() {
@@ -30,36 +28,134 @@ export default function Procurement() {
   const [minStability, setMinStability] = useState(40);
   const [selectedRoute, setSelectedRoute] = useState("route-0"); // First route selected
 
+  // API data states
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [digitalTwinNodes, setDigitalTwinNodes] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchProcurementData = async () => {
+    setError(null);
+    try {
+      const [suppliersRes, twinRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/suppliers`),
+        fetch(`${API_BASE_URL}/api/digital-twin`)
+      ]);
+      if (!suppliersRes.ok) {
+        throw new Error(`HTTP error ${suppliersRes.status}`);
+      }
+      if (!twinRes.ok) {
+        throw new Error(`HTTP error ${twinRes.status}`);
+      }
+      const [suppliersData, twinData] = await Promise.all([
+        suppliersRes.json(),
+        twinRes.json()
+      ]);
+      setSuppliers(suppliersData);
+      setDigitalTwinNodes(twinData.nodes || []);
+    } catch (err: any) {
+      console.error("API Error:", err);
+      setError(err.message || "Failed to establish secure link with procurement systems.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchProcurementData();
+    const interval = setInterval(fetchProcurementData, 300000); // 5 min refresh
+    return () => clearInterval(interval);
+  }, []);
+
+  // Dynamic routes risk evaluation
+  const routesData = useMemo(() => {
+    const redSeaNode = digitalTwinNodes.find(n => n.id === "node-cor-2");
+    const redSeaRisk = redSeaNode?.details.riskScore || 45;
+    
+    return [
+      {
+        name: "Suez Canal Transit (Normal Route)",
+        distanceKm: 11500,
+        durationDays: 14,
+        riskScore: Math.round(redSeaRisk),
+        insurancePremiumDelta: Math.round(redSeaRisk * 1.8),
+        fuelCostDelta: 0,
+        chokepoints: ["Bab-el-Mandeb Strait", "Suez Canal"]
+      },
+      {
+        name: "Cape of Good Hope Bypass (Alternative Route)",
+        distanceKm: 19800,
+        durationDays: 26,
+        riskScore: 10,
+        insurancePremiumDelta: -20,
+        fuelCostDelta: 45,
+        chokepoints: ["None (Open Ocean)"]
+      },
+      {
+        name: "Northern Sea Route (NSR)",
+        distanceKm: 8500,
+        durationDays: 11,
+        riskScore: 60,
+        insurancePremiumDelta: 200,
+        fuelCostDelta: -15,
+        chokepoints: ["Bering Strait", "Arctic Ice Fields"]
+      }
+    ];
+  }, [digitalTwinNodes]);
+
   // Supplier filtering logic
   const filteredSuppliers = useMemo(() => {
-    return suppliersData.filter((s) => {
-      // Region mapping
-      const isMiddleEast = s.country === "Saudi Arabia" || s.country === "United Arab Emirates";
+    return suppliers.filter((s) => {
+      const isMiddleEast = s.country === "Saudi Arabia" || s.country === "United Arab Emirates" || s.country === "Iraq";
       const isAtlantic = s.country === "Brazil" || s.country === "Norway";
       const isAfrica = s.country === "Nigeria";
       
       if (regionFilter === "mid-east" && !isMiddleEast) return false;
       if (regionFilter === "atlantic" && !isAtlantic) return false;
       if (regionFilter === "africa" && !isAfrica) return false;
-
-      // Price filter
       if (s.basePricePerBarrel > maxPrice) return false;
-
-      // Stability filter
       if (s.politicalStabilityScore < minStability) return false;
-
       return true;
     });
-  }, [regionFilter, maxPrice, minStability]);
+  }, [suppliers, regionFilter, maxPrice, minStability]);
 
   // Chart data formatting
   const chartData = useMemo(() => {
-    return suppliersData.map(s => ({
-      name: s.name.split(" ")[0], // Shorter name for XAxis
+    return suppliers.map(s => ({
+      name: s.name.split(" ")[0],
       "Reliability Rating": s.reliabilityRating,
       "Risk Score": s.riskScore
     }));
-  }, []);
+  }, [suppliers]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[500px] border border-slate-900 bg-slate-950/40 rounded-lg font-mono text-xs">
+        <Activity className="h-8 w-8 text-accent animate-pulse mb-4" />
+        <span className="text-slate-400 font-bold tracking-wider">GEOPULSE TACTICAL OVERLINK SYNCHRONIZING...</span>
+        <span className="text-[10px] text-slate-600 mt-1">Establishing link secure channels with procurement intelligence hub</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[500px] border border-danger/30 bg-danger/5 rounded-lg font-mono text-xs p-6 space-y-4">
+        <AlertTriangle className="h-10 w-10 text-danger animate-bounce" />
+        <div className="text-center">
+          <div className="text-danger font-bold text-sm uppercase">OVERLINK LINK FAILURE</div>
+          <div className="text-slate-400 mt-2 max-w-md">{error}</div>
+        </div>
+        <button 
+          onClick={fetchProcurementData}
+          className="px-4 py-2 bg-danger/25 text-danger border border-danger/40 hover:bg-danger/40 rounded uppercase font-bold tracking-widest cursor-pointer transition-all"
+        >
+          Re-establish Connection
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 relative z-10 font-sans">

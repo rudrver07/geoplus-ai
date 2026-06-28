@@ -11,11 +11,15 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL", 
-        "postgresql://postgres:postgres@localhost:5432/geopulse"
+        "sqlite:///./geopulse.db"
     )
     
-    # Gemini AI
+    # API Keys
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    EIA_API_KEY: str = os.getenv("EIA_API_KEY", "")
+    NEWS_API_KEY: str = os.getenv("NEWS_API_KEY", "")
+    OPENWEATHER_API_KEY: str = os.getenv("OPENWEATHER_API_KEY", "")
+    NASA_FIRMS_KEY: str = os.getenv("NASA_FIRMS_KEY", "")
     
     # Server configuration
     HOST: str = "0.0.0.0"

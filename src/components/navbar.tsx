@@ -3,35 +3,46 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Activity, ShieldAlert, Cpu, RefreshCw, BarChart2 } from "lucide-react";
-import { commodityPrices, alertsData } from "@/data/mockData";
 import { motion } from "framer-motion";
+import { API_BASE_URL } from "@/config/api";
 
 export default function Navbar() {
-  const [livePrices, setLivePrices] = useState(commodityPrices[commodityPrices.length - 1]);
+  const [livePrices, setLivePrices] = useState({ brentOil: 86.20, wtiOil: 82.50, lngNaturalGas: 12.10 });
   const [isUpdating, setIsUpdating] = useState(false);
+  const [activeAlerts, setActiveAlerts] = useState(0);
 
-  // Simulate live price updates
   useEffect(() => {
-    const interval = setInterval(() => {
+    const fetchPricesAndAlerts = async () => {
       setIsUpdating(true);
-      const brentDelta = (Math.random() - 0.5) * 0.4;
-      const wtiDelta = (Math.random() - 0.5) * 0.3;
-      const lngDelta = (Math.random() - 0.5) * 0.1;
+      try {
+        const pricesRes = await fetch(`${API_BASE_URL}/api/commodity-feed`);
+        if (!pricesRes.ok) {
+          throw new Error(`HTTP error ${pricesRes.status}`);
+        }
+        const pricesData = await pricesRes.json();
+        if (pricesData && pricesData.length > 0) {
+          setLivePrices(pricesData[pricesData.length - 1]);
+        }
+        
+        const intelRes = await fetch(`${API_BASE_URL}/api/crisis-intelligence`);
+        if (!intelRes.ok) {
+          throw new Error(`HTTP error ${intelRes.status}`);
+        }
+        const intelData = await intelRes.json();
+        const criticalCount = intelData.filter((a: any) => a.severity === "critical" || a.severity === "high").length;
+        setActiveAlerts(criticalCount);
+      } catch (err) {
+        console.error("API Error:", err);
+      } finally {
+        setTimeout(() => setIsUpdating(false), 800);
+      }
+    };
 
-      setLivePrices(prev => ({
-        ...prev,
-        brentOil: parseFloat((prev.brentOil + brentDelta).toFixed(2)),
-        wtiOil: parseFloat((prev.wtiOil + wtiDelta).toFixed(2)),
-        lngNaturalGas: parseFloat((prev.lngNaturalGas + lngDelta).toFixed(2))
-      }));
-
-      setTimeout(() => setIsUpdating(false), 800);
-    }, 6000);
+    fetchPricesAndAlerts();
+    const interval = setInterval(fetchPricesAndAlerts, 300000); // 5 minutes refresh
 
     return () => clearInterval(interval);
   }, []);
-
-  const activeAlerts = alertsData.filter(a => a.severity === "critical" || a.severity === "high").length;
 
   return (
     <header className="sticky top-0 z-50 flex items-center justify-between h-14 px-6 bg-slate-950/80 backdrop-blur-md border-b border-slate-900 select-none">

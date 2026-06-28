@@ -1,19 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { 
   ShieldAlert, 
   Play, 
   Download, 
-  HelpCircle, 
-  TrendingUp, 
-  FileText, 
   Flame, 
   Clock, 
   Cpu, 
   RefreshCw,
-  TrendingDown,
   Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,7 +19,6 @@ export default function Simulator() {
   const [duration, setDuration] = useState(30);
   const [selectedRegions, setSelectedRegions] = useState<string[]>(["mid-east", "red-sea"]);
   const [isSimulating, setIsSimulating] = useState(false);
-  const [showBriefing, setShowBriefing] = useState(false);
 
   // Simulated results state
   const [results, setResults] = useState({
