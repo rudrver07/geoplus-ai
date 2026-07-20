@@ -1,27 +1,50 @@
 # GeoPulse AI — Tactical Geopolitical & Supply Chain Risk Intelligence Hub
 
+![GeoPulse AI Platform Banner](./public/screenshots/geopulse-banner.jpg)
+
 GeoPulse AI is a secure strategic overwatch portal designed to monitor global transit chokepoints, predict supply chain disruptions, evaluate geopolitical risk vectors, and coordinate emergency responses. 
 
 By combining real-time environmental telemetry, news crawlers, commodity spot prices, and satellite thermal anomaly feeds with LangGraph workflows and Google Gemini-powered intelligence, GeoPulse AI transforms raw geopolitical signals into structured, actionable policy directives within minutes.
 
 ---
 
+## Visual Interface Showcase
+
+### 1. Tactical Operations Live Monitor Console
+The central overwatch dashboard integrating real-time telemetry, geographic tracking, and threat indicators.
+![Tactical Operations Console Dashboard](./public/screenshots/geopulse-dashboard.png)
+
+### 2. Analytics Dashboard & Risk Insights
+Advanced risk aggregation trend-lines, weather correlation indexes, and prediction models.
+![Analytics Dashboard](./public/screenshots/geopulse-analytics.jpg)
+
+### 3. AI Risk Analysis & Neural Predictor
+Deep risk scores, neural network models, and automated response actions.
+![AI Risk Analysis Dashboard](./public/screenshots/geopulse-risk-analysis.jpg)
+
+### 4. AI Assistant & Decision Copilot
+A conversational terminal providing predictive analysis, preset prompt chips, and source citation sidebars.
+![AI Assistant Copilot](./public/screenshots/geopulse-ai-assistant.jpg)
+
+---
+
 ## Table of Contents
-1. [System Architecture](#system-architecture)
-2. [Technology Stack](#technology-stack)
-3. [Key Features & Capabilities](#key-features--capabilities)
+1. [Visual Interface Showcase](#visual-interface-showcase)
+2. [System Architecture](#system-architecture)
+3. [Technology Stack](#technology-stack)
+4. [Key Features & Capabilities](#key-features--capabilities)
    - [1. Tactical Operations Console (Dashboard)](#1-tactical-operations-console-dashboard)
    - [2. Strategic Crisis Simulator](#2-strategic-crisis-simulator)
    - [3. AI Decision Copilot](#3-ai-decision-copilot)
    - [4. Procurement Intelligence & Supplier Hub](#4-procurement-intelligence--supplier-hub)
    - [5. National Supply Chain Digital Twin](#5-national-supply-chain-digital-twin)
    - [6. National War Room Command Center](#6-national-war-room-command-center)
-4. [Continuous Ingestion Pipelines & Integrations](#continuous-ingestion-pipelines--integrations)
-5. [Data Models & Schema Details](#data-models--schema-details)
-6. [Local Development Setup](#local-development-setup)
+5. [Continuous Ingestion Pipelines & Integrations](#continuous-ingestion-pipelines--integrations)
+6. [Data Models & Schema Details](#data-models--schema-details)
+7. [Local Development Setup](#local-development-setup)
    - [Backend Configuration & Launch](#backend-configuration--launch)
    - [Frontend Configuration & Launch](#frontend-configuration--launch)
-7. [System OVERWATCH Classification](#system-overwatch-classification)
+8. [System OVERWATCH Classification](#system-overwatch-classification)
 
 ---
 
@@ -91,6 +114,12 @@ graph TD
 
 ### 1. Tactical Operations Console (Dashboard)
 A dynamic monitoring deck displaying real-time metrics and threat evaluations.
+
+#### Live Monitor Overview
+![Tactical Operations Console Dashboard](./public/screenshots/geopulse-dashboard.png)
+
+#### Geo-Climate & Risk Insights Analytics
+![Analytics Dashboard](./public/screenshots/geopulse-analytics.jpg)
 * **Live Shipping Risks Overlay**: Integrates a spinning interactive SVG vector globe with clickable transit corridors (Strait of Hormuz, Bab-el-Mandeb, etc.) to view flow capacity, coordinates, and localized risk scores.
 * **Critical Incident Feed**: A real-time log of security events (category, severity index, region, and timestamp) with a manual "Refresh Feed" POST endpoint trigger to update telemetry.
 * **Risk Analytics**: Displays Recharts timeline charts tracking aggregate chokepoint risk indices alongside a Top Threat Regions Matrix (summarizing risk percentage, vulnerability factors, and active threats).
@@ -108,6 +137,12 @@ Models geopolitical blockades and OPEC production squeezes to evaluate national 
 
 ### 3. AI Decision Copilot
 A RAG-enabled chat terminal to query operational guidelines and model transit alternatives.
+
+#### AI Assistant Interactive Copilot
+![AI Assistant Copilot](./public/screenshots/geopulse-ai-assistant.jpg)
+
+#### AI Risk Analysis & Neural Predictor Command
+![AI Risk Analysis Dashboard](./public/screenshots/geopulse-risk-analysis.jpg)
 * **Gemini Agent Chat**: A terminal-style console for council members to query options (e.g. "What if Hormuz closes for 15 days?").
 * **Source Citations**: A reference sidebar listing source documents (such as IEA directives or naval shipping registries) to ensure data authenticity.
 * **Certainty Confidence Gauge**: A circular gauge showing the confidence percentage of Gemini's recommendation based on historical corridor matching.
